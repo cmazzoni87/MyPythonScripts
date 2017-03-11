@@ -1,5 +1,5 @@
 #Claudio Mazzoni Feb 5th, 2017
-#Web Scrape lists of stocks such as index from the web (exp Wikipedia)
+#Web Scrape lists of stocks such as index from the web (exp Wikipedia) S&P Index, Dow Jones Industrial
 #Able to filter by industry sector
 import urllib2
 import pandas as pd
