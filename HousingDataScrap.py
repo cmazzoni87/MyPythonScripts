@@ -29,7 +29,7 @@ def myRealstateFunction(mystate='NV', myspread='monthly', stdate='2006-03-31', j
             ax.set_xlabel('Length of Time = ' + myspread)
         ax.set_ylabel('Amount in Thousands')
         ax.legend(fancybox=True, shadow=True)
-    plt.show()
+    plt.show()                                      #we plot the results
 
 
 def countMonths(date_start='1987-11-22', date_end='2001-07-29'):            #returns number of months
