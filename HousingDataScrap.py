@@ -7,7 +7,7 @@ from dateutil import relativedelta
 
 def myRealstateFunction(mystate='NV', myspread='monthly', stdate='2006-03-31', json_lastday='', run_avchange=True):               #sprd_by='monthly' # DEFAULT sprd_by='quarterly'#sprd_by='annual'
     for state in mystate:
-        results = requests.get(CONS_file.passparam(state, sprd_by=myspread, dt_start=stdate)).json()
+        results = requests.get(CONS_file.passparam(api key, state, sprd_by=myspread, dt_start=stdate)).json()
         if json_lastday == '': json_lastday = results['dataset']['end_date']            #if end date exist use that else use last day available
         json_vals = [r.pop(1) for r in results['dataset']['data']]                  #Filters the date column [0] (r.pop) and returns a list of numeric values
         pird_spread = countMonths(date_start=stdate, date_end=json_lastday)           #gets number of months #Returns int
