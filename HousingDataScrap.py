@@ -41,4 +41,7 @@ def countMonths(date_start='1987-11-22', date_end='2001-07-29'):            #ret
     mth_count = yrs + mth + 1
     return mth_count
 
-myRealstateFunction(mystate=['NY', 'NEWNY'])
+if __name__ == "__main__":
+    a = myRealstateFunction()
+
+    print("DONE!: ", a)
