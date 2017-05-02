@@ -14,12 +14,12 @@ import Yahoo_API_Extract as y_api           #YAHOO FINANCE API HAS MORE DATA THA
 
 
 def stock_listener(ticker):
-    risk_free_return = ql.get("USTREASURY/BILLRATES", authtoken="ABBDkAozJF6dquecyX_m",
+    risk_free_return = ql.get("USTREASURY/BILLRATES", authtoken="YOURAPIKEY",
                               trim_start=(datetime.datetime.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
                               trim_end=(datetime.datetime.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))
     # treasury price for yesterday
     engine = sqlalchemy.create_engine(
-        'mssql+pyodbc://LAPTOP-S29GML4S/Day_Trading_py?driver=ODBC+Driver+13+for+SQL+Server', echo=False)
+        'mssql+pyodbc://YourServer/Day_Trading_py?driver=ODBC+Driver+13+for+SQL+Server', echo=False)
     timeout = datetime.time(16, 00, 00)
     if engine.dialect.has_table(engine.connect(), ticker + '_Data'):        #Check if Exist
         to_sql_server = pd.read_sql_query(sql="SELECT TOP(30) * FROM dbo." + ticker +
