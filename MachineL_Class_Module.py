@@ -1,55 +1,74 @@
 ##Claudio Mazzoni Apr 7th.
 ##Class Module used to format dataframes into workable arrays and run machine learning analysis
-##currently only regression will add more
-
-import time , math
-import numpy as np
-import pandas as pd, datetime
-from sklearn import preprocessing, cross_validation
+##Only regression, have to add will add more
+##Early draft of a machine learning application that runs different types of regression analysis using
+## stock data and basic technical analysis as features
+import sqlalchemy
+import pandas as pd
+from sklearn import model_selection
 from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pandas.tseries.offsets import *
+import numpy as np
 
-class Machine_Learning_Algorithms:
 
+
+class Algorithms:
     def __init__(self):
         pass
 
-    def get_model(self,each_dir, fldr, forecast_col,lookback):
-        filespredict = 'R:\******\\***_Project\\' \
-                       + fldr + '_Results\\' + each_dir + '.csv'
-        df = pd.read_csv(filespredict, header=0, index_col=0)
-        forecast_out = int(math.ceil(0.001 * len(df)))
-        df['label'] = df[forecast_col].shift(-forecast_out)
-        newdf = df.copy(deep=True)
-        newdf.dropna(inplace=True)
-        X = np.array(df.drop(['label'], 1))
-        X = preprocessing.scale(X)
-        X_lately = X[-lookback:]
-        X = X[:-forecast_out]
-        y = np.array(newdf['label'])
-        last_date = df.iloc[-1].name
-        return X, y, X_lately, last_date
+    def get_data(self, each_dir, forecast_col):
+        filespredict = sqlalchemy.create_engine(
+        'mssql+pyodbc://$$$$$$$/Stock_Hist_tseries_py?driver=ODBC+Driver+13+for+SQL+Server', echo=False)
+        to_sql_server = pd.read_sql_query(sql="SELECT * FROM dbo." + each_dir +
+                                "_Historical ORDER BY [Dates] DESC", con=filespredict).iloc[::-1]
+        to_sql_server = to_sql_server.set_index('Dates')
+        y_df = to_sql_server[forecast_col]
+        x_df = to_sql_server.drop([forecast_col], 1)
+        return x_df, y_df, to_sql_server
+    # Linear regression
+    def get_Linear_Regression(self, each_dir, forecast_col, look_back):
+        x, y, allData= self.get_data(each_dir, forecast_col)
+        X_train, X_test, y_train, y_test = model_selection.train_test_split(x, y, test_size=0.33)
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+        return model, X_test, y_test, allData
 
-    def get_regression(self,X, y, X_lately):
-        X_train, X_test, y_train, y_test = cross_validation.train_test_split(X, y, test_size=0.2)
-        clf = LinearRegression(n_jobs=-1)
-        fitness = clf.fit(X_train, y_train)
-        confidence = clf.score(X_test, y_test)
-        forecast_set = clf.predict(X_lately)
-        return confidence, fitness, forecast_set
+    def trend(self,df):
+        df = df.copy().sort_index()
+        dates = df.index.to_julian_date().values[:, None]
+        x = np.concatenate([np.ones_like(dates), dates], axis=1)
+        y = df.values
+        return pd.DataFrame(np.linalg.pinv(x.T.dot(x)).dot(x.T).dot(y).T,
+                            df.columns, ['Constant', 'Trend'])
 
-    def assemble_timeseries(self,forecast_set, col_name, last_day):
-        df = pd.DataFrame()
-        df[col_name + ' Forecast'] = np.nan
-        last_date = datetime.datetime.strptime(last_day +   # df.iloc[-1].name +
-                                               " 00:00:00", "%Y-%m-%d %H:%M:%S")
-        last_unix = time.mktime(last_date.timetuple())
-        one_day = 86400
-        next_unix = last_unix + one_day
-        for i in forecast_set:
-            next_date = datetime.datetime.fromtimestamp(next_unix)
-            while next_date.isoweekday() > 5:  # skip weekends
-                next_unix += 86400
-                next_date = datetime.datetime.fromtimestamp(next_unix)
-            next_unix += 86400
-            df.loc[next_date] = [np.nan for _ in range(len(df.columns) - 1)] + [i]
-        return df
+
+if __name__ == "__main__":
+    filespredict = sqlalchemy.create_engine(
+        'mssql+pyodbc://$$$$$$$/Stock_Hist_tseries_py?driver=ODBC+Driver+13+for+SQL+Server', echo=False)
+    stock_list = pd.read_sql_query(sql="SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+                      , con=filespredict)
+    for each_dir in stock_list['TABLE_NAME']:
+        ticket = each_dir.split('_')[0]
+        model, x_test, y_test, allData = Algorithms().get_Linear_Regression(ticket, 'Adj. Close', 20)
+        confidence = model.score(x_test, y_test)
+        print ticket, ': ',confidence
+        if confidence > .97:
+            intrcpt = model.intercept_
+            coef = model.coef_
+            predictions = model.predict(x_test)
+            features_coef = pd.DataFrame(coef,allData.drop(["Adj. Close"], 1).columns,columns=['Coeff'])
+            plt.scatter(y_test,predictions,c='black')
+            plt.ylabel('Actual Closing Values')
+            plt.xlabel('Predicted Closing Values')
+            plt.show()
+            sns.distplot((y_test-predictions))
+            plt.show()
+            timer = pd.date_range(str(allData.index[-1]), periods=predictions.size, freq=BDay())
+            set_plot = pd.DataFrame(predictions,columns=['Predictions']).set_index(timer)
+            coef = Algorithms().trend(set_plot)
+            set_plot['Trend'] = (coef.iloc[0, 1] * set_plot.index.to_julian_date() + coef.iloc[0, 0])
+            set_plot.plot(style=['.', '-'])
+            # sns.regplot(x=range(predictions.size), y=set_plot['Predictions'], data=set_plot)
+            plt.show()
