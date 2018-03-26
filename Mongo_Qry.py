@@ -2,7 +2,7 @@
 Created on Tue Aug 22 14:52:58 2017
 @author: claudio.mazzoni
 """
-#Creates queries for mongo and returns the results as CSV files.
+#Simple way of fetching data from mongo without having to write mongo fromatted queries
 
 from  pymongo import MongoClient
 from  pymongo.errors import ConnectionFailure, OperationFailure
@@ -17,6 +17,7 @@ class MongoConnect:
         pass
 
     def FetchCollection(usrnm, pswr, serverid, datbase, colleNm):
+        #user and pass are kept in method FetchCollecion
         username = urllib.parse.quote_plus(usrnm)
         password = urllib.parse.quote_plus(pswr)    
         try:
@@ -84,21 +85,15 @@ if __name__ == "__main__":
     collection = MongoConnect.FetchCollection('mylogin@mylogin',
                                                'P@ssw0rd','111.222.333.444',
                                                'Dashboard', 'ProcessDetail')
-  # Clauses are passed by placing placeholder variables and then passing them as optional parameters.
+  # Clauses types are passed by placing placeholder variables and then passing them as optional parameters.
     qry_results = MongoConnect.QueryConsructor(collection,            
-                                        ['ClientId','ProcessDt','TaxYear'],
+                                        ['ClientId','ProcessDt','Year'],
                                         ['188','placeholder',2016],
                                         gt_lt = ['ProcessDt',datetime.datetime(2017, 9, 25, 0),'$gt',
                                          'ProcessDt',datetime.datetime(2017, 9, 26, 23),'$lt'])
 
     if qry_results != 'ERROR':
         df=pd.DataFrame(list(qry_results))
-        del df['_id']
-        df['StartTime'] = df['StartTime'] - datetime.timedelta(hours=4)
-        df['ProcessDt'] = df['ProcessDt'] - datetime.timedelta(hours=4)
-        df['CreateDt'] = df['CreateDt'] - datetime.timedelta(hours=4)
-        df['EndTime'] = df['EndTime'] - datetime.timedelta(hours=4)
-        err_code = pd.read_csv('N:\\\\Scripts\\PythonProjects\\MongoDBConnect\\ErrorCodes.txt')
-        df['Status'] = df['Status'].map(err_code.set_index('Code')['Description']) #Code,Description
-        df.to_csv('N:\\\\Scripts\\PythonProjects\\MongoDBConnect\\FileOutputs\\Attempt_%s.csv'
-                  % (datetime.datetime.today().strftime('%Y%m%d%H%M%S')))
+        print(df)
+    else:
+        print('Invalid Query')
