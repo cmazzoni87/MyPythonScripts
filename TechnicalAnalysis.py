@@ -11,7 +11,7 @@ from quandl.errors.quandl_error import NotFoundError, AuthenticationError, Inval
 class doAnalitica():
 
     def __init__(self, ticker, dtfrom, dtto, indxlib):
-        self.myhushhushkey = 'ABBDkAozJF6dquecyX_m'
+        self.myhushhushkey = 'YOUAPIKEYPLEASE'
         self.ticker = ticker
         self.dtfrom = dtfrom
         self.dtto = dtto
