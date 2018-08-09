@@ -12,6 +12,7 @@ __author__ = 'Claudio Mazzoni'
 # Text Classifier, user can choose between textblob pre trained model Blobber 
 # or train his/her own using a NaiveBayerClassifier model 
 # class also contains usefull methods such as save, load & test models
+# Model takes two text files with possitive and negative senteces placed on two folders labeled neg & pos
 
 class model_nltk():
 
