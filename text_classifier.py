@@ -65,7 +65,7 @@ class model_nltk():
 
 if __name__ == "__main__":
 
-    sample = 'Despite Colgates efforts stocks pricess fell'
+    sample = 'Despite Colgates efforts, stocks prices fell sharply'
     root = '...\\stock_reviews\\'
     data_paths = [root + 'neg', root + 'pos']
     model_class = model_nltk(data_paths, 0.70)
