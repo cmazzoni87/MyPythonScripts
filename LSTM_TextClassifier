@@ -1,0 +1,134 @@
+__author__ = 'Claudio Mazzoni'
+from tensorflow.keras import preprocessing
+from sklearn.utils import shuffle
+import os
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Embedding, CuDNNLSTM, Bidirectional
+from tensorflow.keras.utils import to_categorical
+from nltk.corpus import stopwords
+import re
+from tensorflow.keras.callbacks import EarlyStopping
+
+#RNN model, dataset used; NLTK_Train_file.csv.
+
+class tensor_rnn():
+
+    def __init__(self, corp_paths, hidden_layers=2, loadfile=True):
+        self.data_path = '//DATAPATH//'
+        self.h_layers = hidden_layers
+        self.num_words = []
+        englis_stop = stopwords.words('english')
+
+        if loadfile is False:
+            data_set = pd.DataFrame(columns=['Article', 'Polarity'])
+            craptopass = []
+            for files in os.listdir(corp_paths[0]):
+                with open(corp_paths[0] + '\\' + files, 'r', errors='replace') as text_file:
+                    line = text_file.readline().replace('|', '')
+                    line = line.lower()
+                    list_text = line.split(' ')
+                    clean_text = []
+                    for tx in list_text:   # Change this to get all
+                        if tx not in englis_stop:
+                            clean_text.append(tx)
+                    line = ' '.join(clean_text)
+                    line = line.replace(',', '')
+                    line = line.replace('.', '')
+                    line = line.replace(' 0', '')
+                    line = re.sub(' +', ' ', line)
+                    text_file.close()
+                if len(line.split(' ')) > 5:
+                    line = ''.join([i if ord(i) < 128 else ' ' for i in line])
+                    craptopass.append([line, 1])
+
+            good = data_set.append(pd.DataFrame(craptopass, columns=['Article', 'Polarity']), ignore_index=True)
+            data_set = pd.DataFrame(columns=['Article', 'Polarity'])
+            craptopass = []
+            for files in os.listdir(corp_paths[1]):
+                with open(corp_paths[1] + '\\' + files, 'r', errors='replace') as text_file:
+                    line = text_file.readline().replace('|', '')
+                    line = line.lower()
+                    list_text = line.split(' ')
+                    clean_text = []
+                    for tx in list_text:
+                        if tx not in englis_stop:
+                            clean_text.append(tx)
+                    line = ' '.join(clean_text)
+                    line = line.replace(',', '')
+                    line = line.replace('', '')
+                    line = line.replace(' 0', '')
+                    line = re.sub(' +', ' ', line)
+                    text_file.close()
+                if len(line.split(' ')) > 3:
+                    line = ''.join([i if ord(i) < 128 else ' ' for i in line])
+                    craptopass.append([line, 0])
+            bad = data_set.append(pd.DataFrame(craptopass, columns=['Article', 'Polarity']), ignore_index=True)
+            for line in good['Article'].tolist():
+                counter = len(line.split())
+                self.num_words.append(counter)
+            for line in bad['Article'].tolist():
+                counter = len(line.split())
+                self.num_words.append(counter)
+            self.features = pd.concat([good, bad]).reset_index(drop=True)
+            self.features.to_csv('Headlines.csv', sep='|')
+        else:
+            self.features = pd.read_csv('Headlines_long.csv', sep='|')
+            self.features['totalwords'] = self.features['Article'].str.count(' ') + 1
+            self.num_words.extend(self.features['totalwords'].tolist())
+
+        self.features = shuffle(self.features)
+        self.max_len = len(max(self.features['Article'].tolist()))
+        tokenizer = self.tok = preprocessing.text.Tokenizer(num_words=len(self.num_words), split=' ')
+        self.tok.fit_on_texts(self.features['Article'].values)
+        X = self.tok.texts_to_sequences(self.features['Article'].values)
+        self.X = preprocessing.sequence.pad_sequences(X)
+        self.Y = to_categorical(self.features['Polarity'].tolist())
+        self.X_train, self.X_test, self.Y_train, self.Y_test = \
+            train_test_split(self.X, self.Y, test_size=0.20, random_state=36)
+
+    def RNN(self):
+        embed_dim = 256
+        lstm_out = 256
+        model = Sequential()
+        model.add(Embedding(len(self.num_words), embed_dim, input_length=self.X.shape[1]))
+        model.add(CuDNNLSTM(lstm_out, return_sequences=True, input_shape=(self.max_len, self.X.shape[1])))
+        model.add(Dropout(0.3))
+        model.add(CuDNNLSTM(128, return_sequences=True))
+        model.add(Dropout(0.2))
+        model.add(CuDNNLSTM(64, return_sequences=False))
+        model.add(Dropout(0.1))
+        model.add(Dense(2, activation='sigmoid'))
+        opt = Adam(lr=0.0001, decay=1e-5)
+        model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+        return model
+
+    def model_train(self):
+        self.model = self.RNN()
+
+    def model_test(self):
+        batch_size = 256
+        history = self.model.fit(self.X_train, self.Y_train, epochs=12, batch_size=batch_size, verbose=1,
+                                 callbacks=[EarlyStopping(monitor='val_loss', min_delta=0.0001,
+                                                          patience=5, verbose=1, mode='auto')], validation_split=0.4)
+
+
+def create_truncated_model(trained_model, max_features, maxlen):
+    model = Sequential()
+    model.add(Embedding(max_features, 256, input_length=maxlen))
+    model.add(Bidirectional(CuDNNLSTM(256)))
+    for i, layer in enumerate(model.layers):
+        layer.set_weights(trained_model.layers[i].get_weights())
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+
+if __name__ == "__main__":
+    paths = '...\\CleanArticlesLabeled\\'
+    save_path = '..\\SentimentModels\\'
+    a = tensor_rnn([paths + '\\pos', paths + '\\neg'], loadfile=True)
+    a.model_train()
+    a.model_test()
+    a.model.save(save_path + 'RNNModelArticles_m2.h5', include_optimizer=True)
