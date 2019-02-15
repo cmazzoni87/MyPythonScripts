@@ -397,7 +397,7 @@ class ICGUtilities:
                 bd_conn_ms_data_bd = pyodbc.connect('DSN=DataLake_Prod_ODBC', autocommit=True)
                 db_conn = bd_conn_ms_data_bd    # .cursor()
             elif connection_type.lower() == 'pace' and server is None and database is None:
-                conn_str = cxo.makedsn(host='scan-pnjpcep1.newyorklife.com', port='1810',
+                conn_str = cxo.makedsn(host='***-*****.***.com', port='***',
                                        service_name='REPORTING')    # , server='DEDICATED')
                 db_conn = cxo.connect(user='******', password='******', dsn=conn_str)
 
