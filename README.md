@@ -1,4 +1,4 @@
-# python_scripts
+# MyPythonScripts
 A few scrips I wrote 
 
 REQUIREMENTS AND FEATURES:
